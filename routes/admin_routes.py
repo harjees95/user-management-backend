@@ -3,7 +3,7 @@ from config import mongo
 from middleware.admin_middleware import admin_required
 from middleware.auth_middleware import token_required
 from bson.objectid import ObjectId
-from flask import request, jsonify
+from flask import request
 
 admin = Blueprint("admin", __name__)
 
@@ -30,14 +30,15 @@ def deactivate_user(id):
 @admin.route("/role/<id>", methods=["PUT"])
 @admin_required
 def change_role(id):
-    if request.user["role"] != "admin":
-        return jsonify({"msg": "Unauthorized"}), 403
+    try:
+        new_role = request.json.get("role")
 
-    new_role = request.json.get("role")
+        mongo.db.users.update_one(
+            {"_id": ObjectId(id)},
+            {"$set": {"role": new_role}}
+        )
 
-    mongo.db.users.update_one(
-        {"_id": ObjectId(id)},
-        {"$set": {"role": new_role}}
-    )
-
-    return jsonify({"msg": "Role updated successfully"})
+        return jsonify({"msg": "Role updated successfully"})
+    except Exception as e:
+        print("ROLE ERROR:", e)
+        return jsonify({"error": str(e)}), 500
